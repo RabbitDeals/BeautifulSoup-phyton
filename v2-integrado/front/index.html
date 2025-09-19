@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <title>Produtos Coletados</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body {
+      padding: 2rem;
+      background-color: #f8f9fa;
+    }
+    .table-container {
+      max-width: 1000px;
+      margin: auto;
+    }
+  </style>
+</head>
+<body>
+  <div class="table-container">
+    <h2 class="mb-4 text-center">📦 Produto Coletado</h2>
+    <table class="table table-bordered table-hover">
+      <thead class="table-dark">
+        <tr>
+          <th>Título</th>
+          <th>Preço (R$)</th>
+          <th>Categoria</th>
+          <th>Tipo</th>
+          <th>Data</th>
+          <th>Link</th>
+        </tr>
+      </thead>
+      <tbody id="produtos-body">
+        <!-- Dados serão inseridos aqui -->
+      </tbody>
+    </table>
+    <div class="text-center mt-4">
+      <button class="btn btn-primary" onclick="carregarProduto()">🔄 Buscar próximo produto</button>
+    </div>
+  </div>
+
+  <script>
+    async function carregarProduto() {
+      try {
+        const response = await fetch("http://localhost:5000/produto");
+        const produto = await response.json();
+
+        console.log("Produto recebido:", produto); // 👈 Mostra no console
+
+        const tbody = document.getElementById("produtos-body");
+        tbody.innerHTML = "";
+
+        if (produto && produto.titulo) {
+          const linha = document.createElement("tr");
+
+          linha.innerHTML = `
+            <td>${produto.titulo}</td>
+            <td>${produto.preco.toFixed(2)}</td>
+            <td>${produto.categoria}</td>
+            <td>${produto.tipo}</td>
+            <td>${new Date(produto.data_coleta).toLocaleString()}</td>
+            <td><a href="${produto.link}" target="_blank">Ver produto</a></td>
+          `;
+
+          tbody.appendChild(linha);
+        } else {
+          const linha = document.createElement("tr");
+          linha.innerHTML = `<td colspan="6" class="text-center text-muted">Nenhum produto disponível</td>`;
+          tbody.appendChild(linha);
+        }
+      } catch (error) {
+        console.error("Erro ao carregar produto:", error);
+      }
+    }
+
+    // Carrega o primeiro produto ao abrir a página
+    carregarProduto();
+  </script>
+</body>
+</html>
