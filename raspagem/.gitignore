@@ -1,0 +1,32 @@
+# Ignorar ambiente virtual criado pelo venv
+__pycache__/
+*.py[cod]
+*.so
+
+# Diretórios do ambiente virtual do Windows/Unix
+Scripts/
+Lib/
+Include/
+pyvenv.cfg
+
+# Arquivos e pastas temporárias
+.pytest_cache/
+.mypy_cache/
+.ipynb_checkpoints/
+*.log
+
+# Editor/IDE
+.vscode/
+.idea/
+
+# Dados sensíveis / configurações locais
+.env
+*.env
+
+# Não versionar binários e caches
+*.egg-info/
+dist/
+build/
+
+# OneDrive temp files
+~$*
