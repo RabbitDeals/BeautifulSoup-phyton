@@ -1,22 +1,47 @@
-
-
-import random
-import time
 import requests
 from bs4 import BeautifulSoup
+import time
+import pika
 import json
+from datetime import datetime
 from categorias import CATEGORIAS
+import random
 
+# ----------------------------
+# Configurações RabbitMQ
+# ----------------------------
+RABBIT_HOST = "localhost"
+EXCHANGE = "categoria_exchange"
 
+credentials = pika.PlainCredentials('admin', 'admin')
+parameters = pika.ConnectionParameters(host=RABBIT_HOST, credentials=credentials)
+connection = pika.BlockingConnection(parameters)
+
+channel = connection.channel()
+
+# Declara exchange tipo direct
+channel.exchange_declare(exchange=EXCHANGE, exchange_type='direct', durable=True)
+
+# Declara filas e bindings (se ainda não existirem)
+filas = {
+    "Tecnologia": "tecnologia_queue",
+    "Academia": "academia_queue"
+}
+
+for routing_key, queue_name in filas.items():
+    channel.queue_declare(queue=queue_name, durable=True)
+    channel.queue_bind(exchange=EXCHANGE, queue=queue_name, routing_key=routing_key)
+
+# ----------------------------
+# Configurações Scraper
+# ----------------------------
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36"
 }
 
-
-
 def buscar_produtos(produto, categoria="Tecnologia", max_paginas=1):
     produto_formatado = produto.replace(" ", "-")
-    url_base = f"https://lista.mercadolivre.com.br/{produto_formatado}/"
+    url_base = f"https://lista.mercadolivre.com.br/{produto_formatado}"
 
     for pagina in range(1, max_paginas + 1):
         url_final = f"{url_base}{pagina}_noindex_True"
@@ -56,28 +81,49 @@ def buscar_produtos(produto, categoria="Tecnologia", max_paginas=1):
             preco_float = 0.0
 
         produto_json = {
-            # "anuncioId": 1,
             "titulo": nome,
             "vendedorNome": vendedor,
             "linkProduto": link,
             "preco": preco_float,
             "avaliacao": estrela,
-            "imagens": [img_url],
+            "imagens": img_url,
             "categoria": categoria
         }
 
-        print(json.dumps(produto_json, ensure_ascii=False, indent=2))
+        routing_key = categoria
 
-        time.sleep(2)
-        break
+        # Envia para exchange
+        channel.basic_publish(
+            exchange=EXCHANGE,
+            routing_key=routing_key,
+            body=json.dumps(produto_json, ensure_ascii=False)
+        )
 
+        print(f"[x] Produto enviado -> {produto_json}")
+
+        time.sleep(10)
+
+# ----------------------------
+# Execução
+# ----------------------------
 if __name__ == "__main__":
-    categoria_escolhida = random.choice(list(CATEGORIAS.keys()))
+    while True:
+        categoria_escolhida = random.choice(list(CATEGORIAS.keys()))
+
+        produto_escolhido = random.choice(CATEGORIAS[categoria_escolhida])
+
+        print(f"\n🔎 Categoria sorteada: {categoria_escolhida}")
+        print(f"🔑 Palavra-chave sorteada: {produto_escolhido}\n")
+
+        buscar_produtos(produto_escolhido, categoria=categoria_escolhida, max_paginas=1)
+
+        print("Aguardando 30 segundos para buscar novo produto...")
+        time.sleep(30)
 
 
-    produto_escolhido = random.choice(CATEGORIAS[categoria_escolhida])
 
-    print(f"\n🔎 Categoria sorteada: {categoria_escolhida}")
-    print(f"🔑 Palavra-chave sorteada: {produto_escolhido}\n")
 
-    buscar_produtos(produto_escolhido, categoria=categoria_escolhida, max_paginas=1)
+
+
+
+
